@@ -2,7 +2,7 @@ package main
 
 type Config struct {
 	Key   string `json:"key"`
-	Kalue string `json:"value"`
+	Value string `json:"value"`
 }
 
 type Group struct {

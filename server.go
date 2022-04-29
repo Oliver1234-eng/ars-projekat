@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"github.com/gorilla/mux"
 	"mime"
 	"net/http"
 )
@@ -36,4 +37,36 @@ func (ts *Service) createConfigHandler(w http.ResponseWriter, req *http.Request)
 	ts.configs[id] = rt
 
 	renderJSON(w, rt)
+}
+
+func (ts *Service) getAllConfigsHandler(w http.ResponseWriter, req *http.Request) {
+	allTasks := []*Config{}
+	for _, v := range ts.configs {
+		allTasks = append(allTasks, v)
+	}
+
+	renderJSON(w, allTasks)
+}
+
+func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
+	id := mux.Vars(req)["id"]
+	task, ok := ts.configs[id]
+	if !ok {
+		err := errors.New("key not found")
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	renderJSON(w, task)
+}
+
+func (ts *Service) delConfigHandler(w http.ResponseWriter, req *http.Request) {
+	id := mux.Vars(req)["id"]
+	if v, ok := ts.configs[id]; ok {
+		delete(ts.configs, id)
+		renderJSON(w, v)
+	} else {
+		err := errors.New("key not found")
+		http.Error(w, err.Error(), http.StatusNotFound)
+	}
 }
