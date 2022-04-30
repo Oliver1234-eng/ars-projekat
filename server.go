@@ -70,3 +70,45 @@ func (ts *Service) delConfigHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 	}
 }
+
+func (ts *Service) delGroupHandler(w http.ResponseWriter, req *http.Request) {
+	id := mux.Vars(req)["uuid"]
+	if v, ok := ts.groups[id]; ok {
+		delete(ts.groups, id)
+		renderJSON(w, v)
+	} else {
+		err := errors.New("key not found")
+		http.Error(w, err.Error(), http.StatusNotFound)
+	}
+}
+
+func (ts *Service) addConfigToGroupHandler(w http.ResponseWriter, req *http.Request) {
+	id := mux.Vars(req)["uuid"]
+
+	contentType := req.Header.Get("Content-Type")
+	mediatype, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if mediatype != "application/json" {
+		err := errors.New("Expect application/json Content-Type")
+		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+		return
+	}
+
+	rt, err := decodeConfig(req.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if v, ok := ts.groups[id]; ok {
+		v.Configs = append(v.Configs, *rt)
+		renderJSON(w, v)
+	} else {
+		err := errors.New("key not found")
+		http.Error(w, err.Error(), http.StatusNotFound)
+	}
+}
