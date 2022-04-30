@@ -24,9 +24,9 @@ func main() {
 	}
 
 	router.HandleFunc("/configs/", server.createConfigHandler).Methods("POST")
-	//router.HandleFunc("/groups/", server.someHandler).Methods("POST")
+	router.HandleFunc("/groups/", server.createGroupHandler).Methods("POST")
 	router.HandleFunc("/configs/{uuid}/", server.getConfigHandler).Methods("GET")
-	//router.HandleFunc("/groups/{uuid}/", server.someHandler).Methods("GET")
+	router.HandleFunc("/groups/{uuid}/", server.getGroupHandler).Methods("GET")
 	router.HandleFunc("/configs/{uuid}/", server.delConfigHandler).Methods("DELETE")
 	router.HandleFunc("/groups/{uuid}/", server.delGroupHandler).Methods("DELETE")
 	router.HandleFunc("/groups/{uuid}/configs/", server.addConfigToGroupHandler).Methods("POST")

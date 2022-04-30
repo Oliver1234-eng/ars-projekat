@@ -39,6 +39,33 @@ func (ts *Service) createConfigHandler(w http.ResponseWriter, req *http.Request)
 	renderJSON(w, rt)
 }
 
+func (ts *Service) createGroupHandler(w http.ResponseWriter, req *http.Request) {
+	contentType := req.Header.Get("Content-Type")
+	mediatype, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if mediatype != "application/json" {
+		err := errors.New("Expect application/json Content-Type")
+		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+		return
+	}
+
+	rt, err := decodeGroup(req.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id := createId()
+
+	ts.groups[id] = rt
+
+	renderJSON(w, rt)
+}
+
 func (ts *Service) getAllConfigsHandler(w http.ResponseWriter, req *http.Request) {
 	allTasks := []*Config{}
 	for _, v := range ts.configs {
@@ -58,6 +85,18 @@ func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	renderJSON(w, task)
+}
+
+func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
+	id := mux.Vars(req)["id"]
+	rt, ok := ts.groups[id]
+	if !ok {
+		err := errors.New("key not found")
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	renderJSON(w, rt)
 }
 
 func (ts *Service) delConfigHandler(w http.ResponseWriter, req *http.Request) {
