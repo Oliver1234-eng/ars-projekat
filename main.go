@@ -24,9 +24,9 @@ func main() {
 	}
 
 	router.HandleFunc("/configs", server.createConfigHandler).Methods("POST")
-	//router.HandleFunc("/groups/", server.someHandler).Methods("POST")
+	router.HandleFunc("/groups", server.createGroupHandler).Methods("POST") //promenio sam "/groups/" u "/groups" da bi se poklapalo sa hendlerom iznad
 	//router.HandleFunc("/configs/{uuid}/", server.someHandler).Methods("GET")
-	//router.HandleFunc("/groups/{uuid}/", server.someHandler).Methods("GET")
+	router.HandleFunc("/groups/{uuid}/", server.getGroupHandler).Methods("GET")
 	//router.HandleFunc("/configs/{uuid}/", server.someHandler).Methods("DELETE")
 	//router.HandleFunc("/groups/{uuid}/", server.someHandler).Methods("DELETE")
 	//router.HandleFunc("/groups/{uuid}/configs", server.someHandler).Methods("POST")
