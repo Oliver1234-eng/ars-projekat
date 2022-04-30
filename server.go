@@ -49,7 +49,7 @@ func (ts *Service) getAllConfigsHandler(w http.ResponseWriter, req *http.Request
 }
 
 func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
-	id := mux.Vars(req)["id"]
+	id := mux.Vars(req)["uuid"]
 	task, ok := ts.configs[id]
 	if !ok {
 		err := errors.New("key not found")
@@ -61,7 +61,7 @@ func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (ts *Service) delConfigHandler(w http.ResponseWriter, req *http.Request) {
-	id := mux.Vars(req)["id"]
+	id := mux.Vars(req)["uuid"]
 	if v, ok := ts.configs[id]; ok {
 		delete(ts.configs, id)
 		renderJSON(w, v)
