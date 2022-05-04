@@ -36,7 +36,7 @@ func (ts *Service) createConfigHandler(w http.ResponseWriter, req *http.Request)
 
 	ts.configs[id] = rt
 
-	renderJSON(w, rt)
+	renderJSON(w, id)
 }
 
 func (ts *Service) createGroupHandler(w http.ResponseWriter, req *http.Request) {
@@ -63,7 +63,7 @@ func (ts *Service) createGroupHandler(w http.ResponseWriter, req *http.Request) 
 
 	ts.groups[id] = rt
 
-	renderJSON(w, rt)
+	renderJSON(w, id)
 }
 
 func (ts *Service) getAllConfigsHandler(w http.ResponseWriter, req *http.Request) {
@@ -88,7 +88,7 @@ func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
-	id := mux.Vars(req)["id"]
+	id := mux.Vars(req)["uuid"]
 	rt, ok := ts.groups[id]
 	if !ok {
 		err := errors.New("key not found")
