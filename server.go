@@ -87,19 +87,20 @@ func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
 	model.RenderJSON(w, config)
 }
 
-//
-//func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
-//	id := mux.Vars(req)["uuid"]
-//	rt, ok := ts.groups[id]
-//	if !ok {
-//		err := errors.New("key not found")
-//		http.Error(w, err.Error(), http.StatusNotFound)
-//		return
-//	}
-//
-//	model.renderJSON(w, rt)
-//}
-//
+func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
+	id := mux.Vars(req)["uuid"]
+	ver := mux.Vars(req)["ver"]
+	labels := model.DecodeQueryLabels(req.URL.Query())
+
+	group, err := ts.store.GetGroup(id, ver, labels)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	model.RenderJSON(w, group)
+}
+
 //func (ts *Service) delConfigHandler(w http.ResponseWriter, req *http.Request) {
 //	id := mux.Vars(req)["uuid"]
 //	if v, ok := ts.configs[id]; ok {
@@ -110,7 +111,7 @@ func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
 //		http.Error(w, err.Error(), http.StatusNotFound)
 //	}
 //}
-//
+
 //func (ts *Service) delGroupHandler(w http.ResponseWriter, req *http.Request) {
 //	id := mux.Vars(req)["uuid"]
 //	if v, ok := ts.groups[id]; ok {

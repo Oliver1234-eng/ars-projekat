@@ -99,3 +99,39 @@ func (ps *ConfigStore) GetConfig(id string, version string) (*model.Config, erro
 
 	return post, nil
 }
+
+func (ps *ConfigStore) GetGroup(id string, version string, labels string) ([]*model.Config, error) {
+	kv := ps.cli.KV()
+
+	groupKey := constructGroupKey(id, version, labels)
+
+	data, _, err := kv.List(groupKey, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	groupConfigs := []*model.Config{}
+	for _, pair := range data {
+		config := &model.Config{}
+		err = json.Unmarshal(pair.Value, config)
+		if err != nil {
+			return nil, err
+		}
+		groupConfigs = append(groupConfigs, config)
+	}
+
+	return groupConfigs, nil
+}
+
+func (ps *ConfigStore) DeleteConfig(id string, version string) (map[string]string, error) {
+	kv := ps.cli.KV()
+
+	configKey := constructConfigKey(id, version)
+
+	_, err := kv.Delete(configKey, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]string{"Deleted": id}, nil
+}
