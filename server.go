@@ -1,6 +1,8 @@
 package main
 
 import (
+	poststore "ars-projekat/configstore"
+	"ars-projekat/model"
 	"errors"
 	"github.com/gorilla/mux"
 	"mime"
@@ -8,8 +10,9 @@ import (
 )
 
 type Service struct {
-	configs map[string]*Config
-	groups  map[string]*Group
+	configs map[string]*model.ConfigJSON
+	groups  map[string]*model.GroupJSON
+	store   *poststore.ConfigStore
 }
 
 func (ts *Service) createConfigHandler(w http.ResponseWriter, req *http.Request) {
@@ -26,17 +29,19 @@ func (ts *Service) createConfigHandler(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	rt, err := decodeConfig(req.Body)
+	rt, err := model.DecodeConfig(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	id := createId()
+	id, err := ts.store.CreateConfig(rt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	ts.configs[id] = rt
-
-	renderJSON(w, id)
+	model.RenderJSON(w, id)
 }
 
 func (ts *Service) createGroupHandler(w http.ResponseWriter, req *http.Request) {
@@ -53,101 +58,97 @@ func (ts *Service) createGroupHandler(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	rt, err := decodeGroup(req.Body)
+	rt, err := model.DecodeGroup(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	id := createId()
-
-	ts.groups[id] = rt
-
-	renderJSON(w, id)
-}
-
-func (ts *Service) getAllConfigsHandler(w http.ResponseWriter, req *http.Request) {
-	allTasks := []*Config{}
-	for _, v := range ts.configs {
-		allTasks = append(allTasks, v)
+	id, err := ts.store.CreateGroup(rt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	renderJSON(w, allTasks)
+	model.RenderJSON(w, id)
 }
 
 func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
 	id := mux.Vars(req)["uuid"]
-	task, ok := ts.configs[id]
-	if !ok {
-		err := errors.New("key not found")
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
+	ver := mux.Vars(req)["ver"]
 
-	renderJSON(w, task)
-}
-
-func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
-	id := mux.Vars(req)["uuid"]
-	rt, ok := ts.groups[id]
-	if !ok {
-		err := errors.New("key not found")
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	renderJSON(w, rt)
-}
-
-func (ts *Service) delConfigHandler(w http.ResponseWriter, req *http.Request) {
-	id := mux.Vars(req)["uuid"]
-	if v, ok := ts.configs[id]; ok {
-		delete(ts.configs, id)
-		renderJSON(w, v)
-	} else {
-		err := errors.New("key not found")
-		http.Error(w, err.Error(), http.StatusNotFound)
-	}
-}
-
-func (ts *Service) delGroupHandler(w http.ResponseWriter, req *http.Request) {
-	id := mux.Vars(req)["uuid"]
-	if v, ok := ts.groups[id]; ok {
-		delete(ts.groups, id)
-		renderJSON(w, v)
-	} else {
-		err := errors.New("key not found")
-		http.Error(w, err.Error(), http.StatusNotFound)
-	}
-}
-
-func (ts *Service) addConfigToGroupHandler(w http.ResponseWriter, req *http.Request) {
-	id := mux.Vars(req)["uuid"]
-
-	contentType := req.Header.Get("Content-Type")
-	mediatype, _, err := mime.ParseMediaType(contentType)
+	config, err := ts.store.GetConfig(id, ver)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if mediatype != "application/json" {
-		err := errors.New("Expect application/json Content-Type")
-		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
-		return
-	}
-
-	rt, err := decodeConfig(req.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if v, ok := ts.groups[id]; ok {
-		v.Configs = append(v.Configs, *rt)
-		renderJSON(w, v)
-	} else {
 		err := errors.New("key not found")
 		http.Error(w, err.Error(), http.StatusNotFound)
+		return
 	}
+
+	model.RenderJSON(w, config)
 }
+
+//
+//func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
+//	id := mux.Vars(req)["uuid"]
+//	rt, ok := ts.groups[id]
+//	if !ok {
+//		err := errors.New("key not found")
+//		http.Error(w, err.Error(), http.StatusNotFound)
+//		return
+//	}
+//
+//	model.renderJSON(w, rt)
+//}
+//
+//func (ts *Service) delConfigHandler(w http.ResponseWriter, req *http.Request) {
+//	id := mux.Vars(req)["uuid"]
+//	if v, ok := ts.configs[id]; ok {
+//		delete(ts.configs, id)
+//		model.renderJSON(w, v)
+//	} else {
+//		err := errors.New("key not found")
+//		http.Error(w, err.Error(), http.StatusNotFound)
+//	}
+//}
+//
+//func (ts *Service) delGroupHandler(w http.ResponseWriter, req *http.Request) {
+//	id := mux.Vars(req)["uuid"]
+//	if v, ok := ts.groups[id]; ok {
+//		delete(ts.groups, id)
+//		model.renderJSON(w, v)
+//	} else {
+//		err := errors.New("key not found")
+//		http.Error(w, err.Error(), http.StatusNotFound)
+//	}
+//}
+//
+//func (ts *Service) addConfigToGroupHandler(w http.ResponseWriter, req *http.Request) {
+//	id := mux.Vars(req)["uuid"]
+//
+//	contentType := req.Header.Get("Content-Type")
+//	mediatype, _, err := mime.ParseMediaType(contentType)
+//	if err != nil {
+//		http.Error(w, err.Error(), http.StatusBadRequest)
+//		return
+//	}
+//
+//	if mediatype != "application/json" {
+//		err := errors.New("Expect application/json Content-Type")
+//		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+//		return
+//	}
+//
+//	rt, err := model.decodeGroupConfig(req.Body)
+//	if err != nil {
+//		http.Error(w, err.Error(), http.StatusBadRequest)
+//		return
+//	}
+//
+//	if v, ok := ts.groups[id]; ok {
+//		v.Configs = append(v.Configs, *rt)
+//		model.renderJSON(w, v)
+//	} else {
+//		err := errors.New("key not found")
+//		http.Error(w, err.Error(), http.StatusNotFound)
+//	}
+//}
