@@ -32,12 +32,14 @@ func main() {
 	}
 
 	router.HandleFunc("/configs/", server.createConfigHandler).Methods("POST")
+	//router.HandleFunc("/configs/{uuid}/", server.createConfigHandler).Methods("POST")
 	router.HandleFunc("/groups/", server.createGroupHandler).Methods("POST")
+	//router.HandleFunc("/groups/{uuid}/", server.createGroupHandler).Methods("POST")
 	router.HandleFunc("/configs/{uuid}/{ver}/", server.getConfigHandler).Methods("GET")
 	router.HandleFunc("/groups/{uuid}/{ver}/", server.getGroupHandler).Methods("GET")
 	router.HandleFunc("/configs/{uuid}/{ver}/", server.delConfigHandler).Methods("DELETE")
 	//router.HandleFunc("/groups/{uuid}/{ver}/", server.delGroupHandler).Methods("DELETE")
-	//router.HandleFunc("/groups/{uuid}/{ver}/configs/", server.addConfigToGroupHandler).Methods("POST")
+	router.HandleFunc("/groups/{uuid}/{ver}/configs/", server.addConfigToGroupHandler).Methods("POST")
 
 	// start server
 	srv := &http.Server{Addr: "0.0.0.0:8000", Handler: router}

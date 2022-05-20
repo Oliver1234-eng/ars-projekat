@@ -3,6 +3,7 @@ package poststore
 import (
 	model "ars-projekat/model"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/hashicorp/consul/api"
 	"os"
@@ -91,6 +92,10 @@ func (ps *ConfigStore) GetConfig(id string, version string) (*model.Config, erro
 		return nil, err
 	}
 
+	if pair == nil {
+		return nil, errors.New("Config not found")
+	}
+
 	post := &model.Config{}
 	err = json.Unmarshal(pair.Value, post)
 	if err != nil {
@@ -105,9 +110,15 @@ func (ps *ConfigStore) GetGroup(id string, version string, labels string) ([]*mo
 
 	groupKey := constructGroupKey(id, version, labels)
 
+	println(groupKey)
+
 	data, _, err := kv.List(groupKey, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	if data == nil {
+		return nil, errors.New("Group not found")
 	}
 
 	groupConfigs := []*model.Config{}
@@ -134,4 +145,33 @@ func (ps *ConfigStore) DeleteConfig(id string, version string) (map[string]strin
 	}
 
 	return map[string]string{"Deleted": id}, nil
+}
+
+func (ps *ConfigStore) AddConfigToGroup(id string, version string, groupConfigJSON *model.GroupConfigJSON) (string, error) {
+	kv := ps.cli.KV()
+	//provera da li grupa postoji
+
+	labels := model.DecodeJSONLabels(groupConfigJSON.Labels)
+	groupConfigKey := constructGroupKey(id, version, labels)
+
+	println("add:", groupConfigKey)
+
+	config := model.Config{
+		Key:   groupConfigJSON.Key,
+		Value: groupConfigJSON.Value,
+	}
+
+	data, err := json.Marshal(config)
+	if err != nil {
+		return "", err
+	}
+
+	p := &api.KVPair{Key: groupConfigKey, Value: data}
+	_, err = kv.Put(p, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return groupConfigKey, nil
+
 }

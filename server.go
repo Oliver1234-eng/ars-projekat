@@ -125,33 +125,35 @@ func (ts *Service) delConfigHandler(w http.ResponseWriter, req *http.Request) {
 //	}
 //}
 //
-//func (ts *Service) addConfigToGroupHandler(w http.ResponseWriter, req *http.Request) {
-//	id := mux.Vars(req)["uuid"]
-//
-//	contentType := req.Header.Get("Content-Type")
-//	mediatype, _, err := mime.ParseMediaType(contentType)
-//	if err != nil {
-//		http.Error(w, err.Error(), http.StatusBadRequest)
-//		return
-//	}
-//
-//	if mediatype != "application/json" {
-//		err := errors.New("Expect application/json Content-Type")
-//		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
-//		return
-//	}
-//
-//	rt, err := model.decodeGroupConfig(req.Body)
-//	if err != nil {
-//		http.Error(w, err.Error(), http.StatusBadRequest)
-//		return
-//	}
-//
-//	if v, ok := ts.groups[id]; ok {
-//		v.Configs = append(v.Configs, *rt)
-//		model.renderJSON(w, v)
-//	} else {
-//		err := errors.New("key not found")
-//		http.Error(w, err.Error(), http.StatusNotFound)
-//	}
-//}
+func (ts *Service) addConfigToGroupHandler(w http.ResponseWriter, req *http.Request) {
+	id := mux.Vars(req)["uuid"]
+	ver := mux.Vars(req)["ver"]
+
+	contentType := req.Header.Get("Content-Type")
+	mediatype, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if mediatype != "application/json" {
+		err := errors.New("Expect application/json Content-Type")
+		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+		return
+	}
+
+	groupConfig, err := model.DecodeGroupConfig(req.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	_, err = ts.store.AddConfigToGroup(id, ver, groupConfig)
+
+	if err != nil {
+		err := errors.New("key not found")
+		http.Error(w, err.Error(), http.StatusNotFound)
+	}
+
+	model.RenderJSON(w, id)
+}
