@@ -101,16 +101,18 @@ func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
 	model.RenderJSON(w, group)
 }
 
-//func (ts *Service) delConfigHandler(w http.ResponseWriter, req *http.Request) {
-//	id := mux.Vars(req)["uuid"]
-//	if v, ok := ts.configs[id]; ok {
-//		delete(ts.configs, id)
-//		model.renderJSON(w, v)
-//	} else {
-//		err := errors.New("key not found")
-//		http.Error(w, err.Error(), http.StatusNotFound)
-//	}
-//}
+func (ts *Service) delConfigHandler(w http.ResponseWriter, req *http.Request) {
+	id := mux.Vars(req)["uuid"]
+	ver := mux.Vars(req)["ver"]
+
+	r, err := ts.store.DeleteConfig(id, ver)
+	if err != nil {
+		err := errors.New("key not found")
+		http.Error(w, err.Error(), http.StatusNotFound)
+	}
+
+	model.RenderJSON(w, r)
+}
 
 //func (ts *Service) delGroupHandler(w http.ResponseWriter, req *http.Request) {
 //	id := mux.Vars(req)["uuid"]
