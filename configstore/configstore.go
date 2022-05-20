@@ -56,11 +56,11 @@ func (ps *ConfigStore) CreateConfig(configJSON *model.ConfigJSON) (string, error
 func (ps *ConfigStore) CreateGroup(groupJSON *model.GroupJSON) (string, error) {
 	kv := ps.cli.KV()
 
-	uuid := createId()
+	groupId := createId()
 
 	for _, c := range groupJSON.Configs {
 		labels := model.DecodeJSONLabels(c.Labels)
-		groupConfigKey := constructGroupKey(uuid, groupJSON.Version, labels)
+		groupConfigKey, _ := generateGroupConfigKey(groupId, groupJSON.Version, labels)
 
 		config := model.Config{
 			Key:   c.Key,
@@ -79,7 +79,7 @@ func (ps *ConfigStore) CreateGroup(groupJSON *model.GroupJSON) (string, error) {
 		}
 	}
 
-	return uuid, nil
+	return groupId, nil
 }
 
 func (ps *ConfigStore) GetConfig(id string, version string) (*model.Config, error) {
@@ -109,8 +109,6 @@ func (ps *ConfigStore) GetGroup(id string, version string, labels string) ([]*mo
 	kv := ps.cli.KV()
 
 	groupKey := constructGroupKey(id, version, labels)
-
-	println(groupKey)
 
 	data, _, err := kv.List(groupKey, nil)
 	if err != nil {
@@ -153,8 +151,6 @@ func (ps *ConfigStore) AddConfigToGroup(id string, version string, groupConfigJS
 
 	labels := model.DecodeJSONLabels(groupConfigJSON.Labels)
 	groupConfigKey := constructGroupKey(id, version, labels)
-
-	println("add:", groupConfigKey)
 
 	config := model.Config{
 		Key:   groupConfigJSON.Key,

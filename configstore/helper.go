@@ -6,9 +6,11 @@ import (
 )
 
 const (
-	configs        = "configs/%s/%s/"
-	groups         = "groups/%s/%s/%s/"
-	groupsNoLabels = "groups/%s/%s/"
+	configs             = "configs/%s/%s/"
+	groups              = "groups/%s/%s/%s/"
+	groupsNoLabels      = "groups/%s/%s/"
+	groupConfig         = "groups/%s/%s/%s/%s/"
+	groupConfigNoLabels = "groups/%s/%s/%s/"
 )
 
 func createId() string {
@@ -20,9 +22,9 @@ func generateConfigKey(version string) (string, string) {
 	return constructConfigKey(id, version), id
 }
 
-func generateGroupKey(version string, labels string) (string, string) {
-	id := uuid.New().String()
-	return constructGroupKey(id, version, labels), id
+func generateGroupConfigKey(groupId string, version string, labels string) (string, string) {
+	configId := uuid.New().String()
+	return constructGroupConfigKey(groupId, configId, version, labels), configId
 }
 
 func constructConfigKey(id string, version string) string {
@@ -34,5 +36,13 @@ func constructGroupKey(id string, version string, labels string) string {
 		return fmt.Sprintf(groupsNoLabels, id, version)
 	} else {
 		return fmt.Sprintf(groups, id, version, labels)
+	}
+}
+
+func constructGroupConfigKey(groupId string, configId string, version string, labels string) string {
+	if labels == "" {
+		return fmt.Sprintf(groupConfigNoLabels, groupId, version, configId)
+	} else {
+		return fmt.Sprintf(groupConfig, groupId, version, labels, configId)
 	}
 }
