@@ -56,7 +56,10 @@ func (ps *ConfigStore) CreateConfig(configJSON *model.ConfigJSON) (string, error
 func (ps *ConfigStore) CreateConfigVersion(id string, configJSON *model.ConfigJSON) (string, error) {
 	kv := ps.cli.KV()
 
-	//provera da li postoji!!
+	confExists := ps.CheckIfConfigExists(id)
+	if !confExists {
+		return "", errors.New("Config not found")
+	}
 
 	configKey := constructConfigKey(id, configJSON.Version)
 
@@ -173,7 +176,11 @@ func (ps *ConfigStore) DeleteConfig(id string, version string) (map[string]strin
 
 func (ps *ConfigStore) AddConfigToGroup(id string, version string, groupConfigJSON *model.GroupConfigJSON) (string, error) {
 	kv := ps.cli.KV()
-	//provera da li grupa postoji
+
+	verExists := ps.CheckIfGroupVersionExists(id, version)
+	if !verExists {
+		return "", errors.New("Group not found")
+	}
 
 	labels := model.DecodeJSONLabels(groupConfigJSON.Labels)
 	groupConfigKey := constructGroupKey(id, version, labels)
@@ -196,4 +203,38 @@ func (ps *ConfigStore) AddConfigToGroup(id string, version string, groupConfigJS
 
 	return groupConfigKey, nil
 
+}
+
+func (ps *ConfigStore) CheckIfConfigExists(id string) bool {
+	kv := ps.cli.KV()
+
+	groupKey := fmt.Sprintf("configs/%s/", id)
+
+	data, _, err := kv.List(groupKey, nil)
+	if err != nil {
+		return false
+	}
+
+	if data == nil {
+		return false
+	}
+
+	return true
+}
+
+func (ps *ConfigStore) CheckIfGroupVersionExists(id string, version string) bool {
+	kv := ps.cli.KV()
+
+	groupKey := fmt.Sprintf("groups/%s/%s/", id, version)
+
+	data, _, err := kv.List(groupKey, nil)
+	if err != nil {
+		return false
+	}
+
+	if data == nil {
+		return false
+	}
+
+	return true
 }
