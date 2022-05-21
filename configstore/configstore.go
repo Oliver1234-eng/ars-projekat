@@ -53,6 +53,32 @@ func (ps *ConfigStore) CreateConfig(configJSON *model.ConfigJSON) (string, error
 	return rid, nil
 }
 
+func (ps *ConfigStore) CreateConfigVersion(id string, configJSON *model.ConfigJSON) (string, error) {
+	kv := ps.cli.KV()
+
+	//provera da li postoji!!
+
+	configKey := constructConfigKey(id, configJSON.Version)
+
+	config := model.Config{
+		Key:   configJSON.Key,
+		Value: configJSON.Value,
+	}
+
+	data, err := json.Marshal(config)
+	if err != nil {
+		return "", err
+	}
+
+	p := &api.KVPair{Key: configKey, Value: data}
+	_, err = kv.Put(p, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return configKey, nil
+}
+
 func (ps *ConfigStore) CreateGroup(groupJSON *model.GroupJSON) (string, error) {
 	kv := ps.cli.KV()
 
