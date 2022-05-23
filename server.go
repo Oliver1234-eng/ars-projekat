@@ -208,3 +208,16 @@ func (ts *Service) createGroupVersionHandler(w http.ResponseWriter, req *http.Re
 
 	model.RenderJSON(w, id)
 }
+
+func (ts *Service) delGroupHandler(w http.ResponseWriter, req *http.Request) {
+	id := mux.Vars(req)["uuid"]
+	ver := mux.Vars(req)["ver"]
+
+	r, err := ts.store.DeleteGroup(id, ver)
+	if err != nil {
+		err := errors.New("key not found")
+		http.Error(w, err.Error(), http.StatusNotFound)
+	}
+
+	model.RenderJSON(w, r)
+}

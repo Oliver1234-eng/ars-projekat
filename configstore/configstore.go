@@ -287,3 +287,16 @@ func (ps *ConfigStore) CheckIfGroupExists(id string) bool {
 
 	return true
 }
+
+func (ps *ConfigStore) DeleteGroup(id string, version string) (map[string]string, error) {
+	kv := ps.cli.KV()
+
+	groupKey := constructGroupKey(id, version, "")
+
+	_, err := kv.DeleteTree(groupKey, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]string{"Deleted": id}, nil
+}
