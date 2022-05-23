@@ -238,3 +238,52 @@ func (ps *ConfigStore) CheckIfGroupVersionExists(id string, version string) bool
 
 	return true
 }
+
+func (ps *ConfigStore) CreateGroupVersion(groupId string, groupJSON *model.GroupJSON) (string, error) {
+	kv := ps.cli.KV()
+
+	groupExists := ps.CheckIfGroupExists(groupId)
+	if !groupExists {
+		return "", errors.New("Group not found")
+	}
+
+	for _, c := range groupJSON.Configs {
+		labels := model.DecodeJSONLabels(c.Labels)
+		groupConfigKey, _ := generateGroupConfigKey(groupId, groupJSON.Version, labels)
+
+		config := model.Config{
+			Key:   c.Key,
+			Value: c.Value,
+		}
+
+		data, err := json.Marshal(config)
+		if err != nil {
+			return "", err
+		}
+
+		p := &api.KVPair{Key: groupConfigKey, Value: data}
+		_, err = kv.Put(p, nil)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return groupId, nil
+}
+
+func (ps *ConfigStore) CheckIfGroupExists(id string) bool {
+	kv := ps.cli.KV()
+
+	groupKey := fmt.Sprintf("groups/%s/", id)
+
+	data, _, err := kv.List(groupKey, nil)
+	if err != nil {
+		return false
+	}
+
+	if data == nil {
+		return false
+	}
+
+	return true
+}

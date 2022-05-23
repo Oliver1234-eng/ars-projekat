@@ -8,7 +8,7 @@ services:
       - "8600:8600/udp"
     command: "agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0"
     volumes:
-      - C:\Users\Igor\Desktop/arsConsul:/consul/data
+      - C:\Users\Kojic\Desktop/Folder:/consul/data
   app:
     build: .
     restart: always
