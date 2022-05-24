@@ -61,6 +61,11 @@ func (ps *ConfigStore) CreateConfigVersion(id string, configJSON *model.ConfigJS
 		return "", errors.New("Config not found")
 	}
 
+	confVersionExists := ps.CheckIfConfigVersionExists(id, configJSON.Version)
+	if confVersionExists {
+		return "", errors.New("Config version already exists")
+	}
+
 	configKey := constructConfigKey(id, configJSON.Version)
 
 	config := model.Config{
@@ -247,6 +252,11 @@ func (ps *ConfigStore) CreateGroupVersion(groupId string, groupJSON *model.Group
 		return "", errors.New("Group not found")
 	}
 
+	groupVersionExists := ps.CheckIfGroupVersionExists(groupId, groupJSON.Version)
+	if groupVersionExists {
+		return "", errors.New("Group version already exists")
+	}
+
 	for _, c := range groupJSON.Configs {
 		labels := model.DecodeJSONLabels(c.Labels)
 		groupConfigKey, _ := generateGroupConfigKey(groupId, groupJSON.Version, labels)
@@ -299,4 +309,21 @@ func (ps *ConfigStore) DeleteGroup(id string, version string) (map[string]string
 	}
 
 	return map[string]string{"Deleted": id}, nil
+}
+
+func (ps *ConfigStore) CheckIfConfigVersionExists(id string, version string) bool {
+	kv := ps.cli.KV()
+
+	groupKey := fmt.Sprintf("configs/%s/%s/", id, version)
+
+	data, _, err := kv.List(groupKey, nil)
+	if err != nil {
+		return false
+	}
+
+	if data == nil {
+		return false
+	}
+
+	return true
 }
