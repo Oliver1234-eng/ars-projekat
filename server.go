@@ -10,9 +10,31 @@ import (
 )
 
 type Service struct {
-	configs map[string]*model.ConfigJSON
-	groups  map[string]*model.GroupJSON
-	store   *poststore.ConfigStore
+	store *poststore.ConfigStore
+}
+
+func (ts *Service) IdempotencyCheck(handlerFunc func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		idempotencyKey := req.Header.Get("Idempotency-Key")
+		if idempotencyKey == "" {
+			http.Error(w, "Missing Idempotency-Key header", http.StatusBadRequest)
+			return
+		}
+
+		keyExists, storedKey, err := ts.store.IdempotencyKeyExists(idempotencyKey)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if keyExists {
+			model.RenderJSON(w, storedKey)
+			return
+		}
+
+		handlerFunc(w, req)
+	}
 }
 
 func (ts *Service) createConfigHandler(w http.ResponseWriter, req *http.Request) {

@@ -29,6 +29,23 @@ func New() (*ConfigStore, error) {
 	}, nil
 }
 
+func (ps *ConfigStore) IdempotencyKeyExists(key string) (bool, string, error) {
+	kv := ps.cli.KV()
+
+	idempotencyKey := fmt.Sprintf("idempotency/%s/", key)
+
+	uuid, _, err := kv.Get(idempotencyKey, nil)
+	if err != nil {
+		return false, "", err
+	}
+
+	if uuid == nil {
+		return false, "", nil
+	}
+
+	return true, string(uuid.Value), nil
+}
+
 func (ps *ConfigStore) CreateConfig(configJSON *model.ConfigJSON) (string, error) {
 	kv := ps.cli.KV()
 
