@@ -28,15 +28,16 @@ func main() {
 		store: store,
 	}
 
-	router.HandleFunc("/configs/", server.IdempotencyCheck(server.createConfigHandler)).Methods("POST")
-	router.HandleFunc("/configs/{uuid}/", server.IdempotencyCheck(server.createConfigVersionHandler)).Methods("POST")
-	router.HandleFunc("/groups/", server.IdempotencyCheck(server.createGroupHandler)).Methods("POST")
-	router.HandleFunc("/groups/{uuid}/", server.IdempotencyCheck(server.createGroupVersionHandler)).Methods("POST")
-	router.HandleFunc("/configs/{uuid}/{ver}/", server.getConfigHandler).Methods("GET")
-	router.HandleFunc("/groups/{uuid}/{ver}/", server.getGroupHandler).Methods("GET")
-	router.HandleFunc("/configs/{uuid}/{ver}/", server.delConfigHandler).Methods("DELETE")
-	router.HandleFunc("/groups/{uuid}/{ver}/", server.delGroupHandler).Methods("DELETE")
-	router.HandleFunc("/groups/{uuid}/{ver}/configs/", server.IdempotencyCheck(server.addConfigToGroupHandler)).Methods("POST")
+	router.HandleFunc("/configs/", count(server.IdempotencyCheck(server.createConfigHandler), "createConfigHandler")).Methods("POST")
+	router.HandleFunc("/configs/{uuid}/", count(server.IdempotencyCheck(server.createConfigVersionHandler), "createConfigVersionHandler")).Methods("POST")
+	router.HandleFunc("/groups/", count(server.IdempotencyCheck(server.createGroupHandler), "createGroupHandler")).Methods("POST")
+	router.HandleFunc("/groups/{uuid}/", count(server.IdempotencyCheck(server.createGroupVersionHandler), "createGroupVersionHandler")).Methods("POST")
+	router.HandleFunc("/configs/{uuid}/{ver}/", count(server.getConfigHandler, "getConfigHandler")).Methods("GET")
+	router.HandleFunc("/groups/{uuid}/{ver}/", count(server.getGroupHandler, "getGroupHandler")).Methods("GET")
+	router.HandleFunc("/configs/{uuid}/{ver}/", count(server.delConfigHandler, "delConfigHandler")).Methods("DELETE")
+	router.HandleFunc("/groups/{uuid}/{ver}/", count(server.delGroupHandler, "delGroupHandler")).Methods("DELETE")
+	router.HandleFunc("/groups/{uuid}/{ver}/configs/", count(server.IdempotencyCheck(server.addConfigToGroupHandler), "addConfigToGroupHandler")).Methods("POST")
+	router.Path("/metrics").Handler(metricsHandler())
 
 	// start server
 	srv := &http.Server{Addr: "0.0.0.0:8000", Handler: router}
