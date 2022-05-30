@@ -344,3 +344,12 @@ func (ps *ConfigStore) CheckIfConfigVersionExists(id string, version string) boo
 
 	return true
 }
+
+func (ps *ConfigStore) SaveIdempotencyKey(key string, itemId string) {
+	kv := ps.cli.KV()
+
+	idempotencyKey := constructIdempotencyKey(key)
+
+	p := &api.KVPair{Key: idempotencyKey, Value: []byte(itemId)}
+	kv.Put(p, nil)
+}

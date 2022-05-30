@@ -8,7 +8,7 @@ services:
       - "8600:8600/udp"
     command: "agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0"
     volumes:
-      - /home/borisavz/consul:/consul/data
+      - C:/Users/Kojic/Desktop/Folder:/consul/data
   app:
     build: .
     restart: always
@@ -24,7 +24,7 @@ services:
     ports:
       - '9090:9090'
     volumes:
-      - /home/borisavz/GolandProjects/ars-projekat/prometheus:/etc/prometheus
+      - C:\Users\Kojic\Desktop/ars-projekat/prometheus:/etc/prometheus
       - prometheus:/prometheus
 volumes:
   consul:
