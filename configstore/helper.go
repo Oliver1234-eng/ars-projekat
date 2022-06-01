@@ -11,6 +11,7 @@ const (
 	groupsNoLabels      = "groups/%s/%s/"
 	groupConfig         = "groups/%s/%s/%s/%s/"
 	groupConfigNoLabels = "groups/%s/%s/%s/"
+	idempotency         = "idempotency/%s/"
 )
 
 func createId() string {
@@ -45,4 +46,13 @@ func constructGroupConfigKey(groupId string, configId string, version string, la
 	} else {
 		return fmt.Sprintf(groupConfig, groupId, version, labels, configId)
 	}
+}
+
+func generateIdempotencyKey() (string, string) {
+	id := uuid.New().String()
+	return constructIdempotencyKey(id), id
+}
+
+func constructIdempotencyKey(key string) string {
+	return fmt.Sprintf(idempotency, key)
 }
