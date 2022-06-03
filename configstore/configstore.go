@@ -31,7 +31,10 @@ func New() (*ConfigStore, error) {
 	}, nil
 }
 
-func (ps *ConfigStore) IdempotencyKeyExists(key string) (bool, string, error) {
+func (ps *ConfigStore) IdempotencyKeyExists(ctx context.Context, key string) (bool, string, error) {
+	span := tracer.StartSpanFromContext(ctx, "IdempotencyKeyExists")
+	defer span.Finish()
+
 	kv := ps.cli.KV()
 
 	idempotencyKey := fmt.Sprintf("idempotency/%s/", key)
@@ -375,7 +378,10 @@ func (ps *ConfigStore) CheckIfConfigVersionExists(id string, version string) boo
 	return true
 }
 
-func (ps *ConfigStore) SaveIdempotencyKey(key string, itemId string) {
+func (ps *ConfigStore) SaveIdempotencyKey(ctx context.Context, key string, itemId string) {
+	span := tracer.StartSpanFromContext(ctx, "SaveIdempotencyKey")
+	defer span.Finish()
+
 	kv := ps.cli.KV()
 
 	idempotencyKey := constructIdempotencyKey(key)

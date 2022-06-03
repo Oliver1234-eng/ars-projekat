@@ -20,15 +20,20 @@ type Service struct {
 	closer io.Closer
 }
 
-func (ts *Service) IdempotencyCheck(handlerFunc func(http.ResponseWriter, *http.Request) string) func(http.ResponseWriter, *http.Request) {
+func (ts *Service) IdempotencyCheck(handlerFunc func(context.Context, http.ResponseWriter, *http.Request) string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
+		span := tracer.StartSpanFromRequest("IdempotencyCheck", ts.tracer, req)
+		defer span.Finish()
+
+		ctx := tracer.ContextWithSpan(context.Background(), span)
+
 		idempotencyKey := req.Header.Get("Idempotency-Key")
 		if idempotencyKey == "" {
 			http.Error(w, "Missing Idempotency-Key header", http.StatusBadRequest)
 			return
 		}
 
-		keyExists, storedKey, err := ts.store.IdempotencyKeyExists(idempotencyKey)
+		keyExists, storedKey, err := ts.store.IdempotencyKeyExists(ctx, idempotencyKey)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -36,18 +41,21 @@ func (ts *Service) IdempotencyCheck(handlerFunc func(http.ResponseWriter, *http.
 		}
 
 		if keyExists {
-			model.RenderJSONOld(w, storedKey)
+			model.RenderJSON(ctx, w, storedKey)
 			return
 		}
 
-		id := handlerFunc(w, req)
+		id := handlerFunc(ctx, w, req)
 		if id != "" {
-			ts.store.SaveIdempotencyKey(idempotencyKey, id)
+			ts.store.SaveIdempotencyKey(ctx, idempotencyKey, id)
 		}
 	}
 }
 
-func (ts *Service) createConfigHandler(w http.ResponseWriter, req *http.Request) string {
+func (ts *Service) createConfigHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) string {
+	span := tracer.StartSpanFromContext(ctx, "createConfigHandler")
+	defer span.Finish()
+
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
@@ -79,7 +87,10 @@ func (ts *Service) createConfigHandler(w http.ResponseWriter, req *http.Request)
 
 }
 
-func (ts *Service) createConfigVersionHandler(w http.ResponseWriter, req *http.Request) string {
+func (ts *Service) createConfigVersionHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) string {
+	span := tracer.StartSpanFromContext(ctx, "createConfigVersionHandler")
+	defer span.Finish()
+
 	id := mux.Vars(req)["uuid"]
 
 	contentType := req.Header.Get("Content-Type")
@@ -112,7 +123,10 @@ func (ts *Service) createConfigVersionHandler(w http.ResponseWriter, req *http.R
 	return id
 }
 
-func (ts *Service) createGroupHandler(w http.ResponseWriter, req *http.Request) string {
+func (ts *Service) createGroupHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) string {
+	span := tracer.StartSpanFromContext(ctx, "createGroupHandler")
+	defer span.Finish()
+
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
@@ -193,8 +207,8 @@ func (ts *Service) delConfigHandler(w http.ResponseWriter, req *http.Request) {
 	model.RenderJSON(ctx, w, r)
 }
 
-func (ts *Service) addConfigToGroupHandler(w http.ResponseWriter, req *http.Request) string {
-	span := tracer.StartSpanFromRequest("addConfigToGroupHandler", ts.tracer, req)
+func (ts *Service) addConfigToGroupHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) string {
+	span := tracer.StartSpanFromContext(ctx, "addConfigToGroupHandler")
 	defer span.Finish()
 
 	span.LogFields(
@@ -217,7 +231,7 @@ func (ts *Service) addConfigToGroupHandler(w http.ResponseWriter, req *http.Requ
 		return ""
 	}
 
-	ctx := tracer.ContextWithSpan(context.Background(), span)
+	//ctx := tracer.ContextWithSpan(context.Background(), span)
 
 	groupConfig, err := model.DecodeGroupConfig(ctx, req.Body)
 	if err != nil {
@@ -238,7 +252,10 @@ func (ts *Service) addConfigToGroupHandler(w http.ResponseWriter, req *http.Requ
 	return id
 }
 
-func (ts *Service) createGroupVersionHandler(w http.ResponseWriter, req *http.Request) string {
+func (ts *Service) createGroupVersionHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) string {
+	span := tracer.StartSpanFromContext(ctx, "createGroupVersionHandler")
+	defer span.Finish()
+
 	id := mux.Vars(req)["uuid"]
 
 	contentType := req.Header.Get("Content-Type")
