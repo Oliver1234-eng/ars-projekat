@@ -2,6 +2,8 @@ package poststore
 
 import (
 	model "ars-projekat/model"
+	tracer "ars-projekat/tracer"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -183,23 +185,33 @@ func (ps *ConfigStore) GetGroup(id string, version string, labels string) ([]*mo
 	return groupConfigs, nil
 }
 
-func (ps *ConfigStore) DeleteConfig(id string, version string) (map[string]string, error) {
+func (ps *ConfigStore) DeleteConfig(ctx context.Context, id string, version string) (map[string]string, error) {
+	span := tracer.StartSpanFromContext(ctx, "DeleteConfig")
+	defer span.Finish()
+
 	kv := ps.cli.KV()
 
 	configKey := constructConfigKey(id, version)
 
+	deleteSpan := tracer.StartSpanFromContext(ctx, "Delete")
 	_, err := kv.Delete(configKey, nil)
+	deleteSpan.Finish()
+
 	if err != nil {
+		tracer.LogError(span, err)
 		return nil, err
 	}
 
 	return map[string]string{"Deleted": id}, nil
 }
 
-func (ps *ConfigStore) AddConfigToGroup(id string, version string, groupConfigJSON *model.GroupConfigJSON) (string, error) {
+func (ps *ConfigStore) AddConfigToGroup(ctx context.Context, id string, version string, groupConfigJSON *model.GroupConfigJSON) (string, error) {
+	span := tracer.StartSpanFromContext(ctx, "AddConfigToGroup")
+	defer span.Finish()
+
 	kv := ps.cli.KV()
 
-	verExists := ps.CheckIfGroupVersionExists(id, version)
+	verExists := ps.CheckIfGroupVersionExists(ctx, id, version)
 	if !verExists {
 		return "", errors.New("Group not found")
 	}
@@ -218,7 +230,11 @@ func (ps *ConfigStore) AddConfigToGroup(id string, version string, groupConfigJS
 	}
 
 	p := &api.KVPair{Key: groupConfigKey, Value: data}
+
+	putSpan := tracer.StartSpanFromContext(ctx, "Put")
 	_, err = kv.Put(p, nil)
+	putSpan.Finish()
+
 	if err != nil {
 		return "", err
 	}
@@ -244,13 +260,20 @@ func (ps *ConfigStore) CheckIfConfigExists(id string) bool {
 	return true
 }
 
-func (ps *ConfigStore) CheckIfGroupVersionExists(id string, version string) bool {
+func (ps *ConfigStore) CheckIfGroupVersionExists(ctx context.Context, id string, version string) bool {
+	span := tracer.StartSpanFromContext(ctx, "CheckIfGroupVersionExists")
+	defer span.Finish()
+
 	kv := ps.cli.KV()
 
 	groupKey := fmt.Sprintf("groups/%s/%s/", id, version)
 
+	listSpan := tracer.StartSpanFromContext(ctx, "List")
 	data, _, err := kv.List(groupKey, nil)
+	listSpan.Finish()
+
 	if err != nil {
+		tracer.LogError(span, err)
 		return false
 	}
 
@@ -269,7 +292,7 @@ func (ps *ConfigStore) CreateGroupVersion(groupId string, groupJSON *model.Group
 		return "", errors.New("Group not found")
 	}
 
-	groupVersionExists := ps.CheckIfGroupVersionExists(groupId, groupJSON.Version)
+	groupVersionExists := ps.CheckIfGroupVersionExists(context.Background(), groupId, groupJSON.Version)
 	if groupVersionExists {
 		return "", errors.New("Group version already exists")
 	}
@@ -315,13 +338,20 @@ func (ps *ConfigStore) CheckIfGroupExists(id string) bool {
 	return true
 }
 
-func (ps *ConfigStore) DeleteGroup(id string, version string) (map[string]string, error) {
+func (ps *ConfigStore) DeleteGroup(ctx context.Context, id string, version string) (map[string]string, error) {
+	span := tracer.StartSpanFromContext(ctx, "DeleteGroup")
+	defer span.Finish()
+
 	kv := ps.cli.KV()
 
 	groupKey := constructGroupKey(id, version, "")
 
+	deleteTreeSpan := tracer.StartSpanFromContext(ctx, "DeleteTree")
 	_, err := kv.DeleteTree(groupKey, nil)
+	deleteTreeSpan.Finish()
+
 	if err != nil {
+		tracer.LogError(span, err)
 		return nil, err
 	}
 

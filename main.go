@@ -2,8 +2,10 @@ package main
 
 import (
 	poststore "ars-projekat/configstore"
+	tracer "ars-projekat/tracer"
 	"context"
 	"github.com/gorilla/mux"
+	"github.com/opentracing/opentracing-go"
 	"log"
 	"net/http"
 	"os"
@@ -24,8 +26,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	tracer, closer := tracer.Init("config_service")
+	opentracing.SetGlobalTracer(tracer)
+
 	server := Service{
-		store: store,
+		store:  store,
+		tracer: tracer,
+		closer: closer,
 	}
 
 	router.HandleFunc("/configs/", count(server.IdempotencyCheck(server.createConfigHandler), "createConfigHandler")).Methods("POST")

@@ -1,6 +1,8 @@
 package model
 
 import (
+	tracer "ars-projekat/tracer"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
@@ -21,12 +23,16 @@ func DecodeConfig(r io.Reader) (*ConfigJSON, error) {
 	return &rt, nil
 }
 
-func DecodeGroupConfig(r io.Reader) (*GroupConfigJSON, error) {
+func DecodeGroupConfig(ctx context.Context, r io.Reader) (*GroupConfigJSON, error) {
+	span := tracer.StartSpanFromContext(ctx, "DecodeGroupConfig")
+	defer span.Finish()
+
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
 
 	var rt GroupConfigJSON
 	if err := dec.Decode(&rt); err != nil {
+		tracer.LogError(span, err)
 		return nil, err
 	}
 	return &rt, nil
@@ -82,9 +88,24 @@ func DecodeJSONLabels(labels []LabelJSON) string {
 	return strings.Join(pairs[:], "&")
 }
 
-func RenderJSON(w http.ResponseWriter, v interface{}) {
+func RenderJSONOld(w http.ResponseWriter, v interface{}) {
 	js, err := json.Marshal(v)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/model")
+	w.Write(js)
+}
+
+func RenderJSON(ctx context.Context, w http.ResponseWriter, v interface{}) {
+	span := tracer.StartSpanFromContext(ctx, "RenderJSON")
+	defer span.Finish()
+
+	js, err := json.Marshal(v)
+	if err != nil {
+		tracer.LogError(span, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
