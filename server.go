@@ -3,25 +3,37 @@ package main
 import (
 	poststore "ars-projekat/configstore"
 	"ars-projekat/model"
+	tracer "ars-projekat/tracer"
+	"context"
 	"errors"
+	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/opentracing/opentracing-go"
+	"io"
 	"mime"
 	"net/http"
 )
 
 type Service struct {
-	store *poststore.ConfigStore
+	store  *poststore.ConfigStore
+	tracer opentracing.Tracer
+	closer io.Closer
 }
 
-func (ts *Service) IdempotencyCheck(handlerFunc func(http.ResponseWriter, *http.Request) string) func(http.ResponseWriter, *http.Request) {
+func (ts *Service) IdempotencyCheck(handlerFunc func(context.Context, http.ResponseWriter, *http.Request) string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
+		span := tracer.StartSpanFromRequest("IdempotencyCheck", ts.tracer, req)
+		defer span.Finish()
+
+		ctx := tracer.ContextWithSpan(context.Background(), span)
+
 		idempotencyKey := req.Header.Get("Idempotency-Key")
 		if idempotencyKey == "" {
 			http.Error(w, "Missing Idempotency-Key header", http.StatusBadRequest)
 			return
 		}
 
-		keyExists, storedKey, err := ts.store.IdempotencyKeyExists(idempotencyKey)
+		keyExists, storedKey, err := ts.store.IdempotencyKeyExists(ctx, idempotencyKey)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -29,18 +41,21 @@ func (ts *Service) IdempotencyCheck(handlerFunc func(http.ResponseWriter, *http.
 		}
 
 		if keyExists {
-			model.RenderJSON(w, storedKey)
+			model.RenderJSON(ctx, w, storedKey)
 			return
 		}
 
-		id := handlerFunc(w, req)
+		id := handlerFunc(ctx, w, req)
 		if id != "" {
-			ts.store.SaveIdempotencyKey(idempotencyKey, id)
+			ts.store.SaveIdempotencyKey(ctx, idempotencyKey, id)
 		}
 	}
 }
 
-func (ts *Service) createConfigHandler(w http.ResponseWriter, req *http.Request) string {
+func (ts *Service) createConfigHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) string {
+	span := tracer.StartSpanFromContext(ctx, "createConfigHandler")
+	defer span.Finish()
+
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
@@ -66,13 +81,16 @@ func (ts *Service) createConfigHandler(w http.ResponseWriter, req *http.Request)
 		return ""
 	}
 
-	model.RenderJSON(w, id)
+	model.RenderJSONOld(w, id)
 
 	return id
 
 }
 
-func (ts *Service) createConfigVersionHandler(w http.ResponseWriter, req *http.Request) string {
+func (ts *Service) createConfigVersionHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) string {
+	span := tracer.StartSpanFromContext(ctx, "createConfigVersionHandler")
+	defer span.Finish()
+
 	id := mux.Vars(req)["uuid"]
 
 	contentType := req.Header.Get("Content-Type")
@@ -100,12 +118,15 @@ func (ts *Service) createConfigVersionHandler(w http.ResponseWriter, req *http.R
 		return ""
 	}
 
-	model.RenderJSON(w, id)
+	model.RenderJSONOld(w, id)
 
 	return id
 }
 
-func (ts *Service) createGroupHandler(w http.ResponseWriter, req *http.Request) string {
+func (ts *Service) createGroupHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) string {
+	span := tracer.StartSpanFromContext(ctx, "createGroupHandler")
+	defer span.Finish()
+
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
@@ -131,7 +152,7 @@ func (ts *Service) createGroupHandler(w http.ResponseWriter, req *http.Request) 
 		return ""
 	}
 
-	model.RenderJSON(w, id)
+	model.RenderJSONOld(w, id)
 
 	return id
 }
@@ -147,7 +168,7 @@ func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	model.RenderJSON(w, config)
+	model.RenderJSONOld(w, config)
 }
 
 func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
@@ -161,23 +182,39 @@ func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	model.RenderJSON(w, group)
+	model.RenderJSONOld(w, group)
 }
 
 func (ts *Service) delConfigHandler(w http.ResponseWriter, req *http.Request) {
+	span := tracer.StartSpanFromRequest("delConfigHandler", ts.tracer, req)
+	defer span.Finish()
+
+	span.LogFields(
+		tracer.LogString("handler", fmt.Sprintf("handling delete config at %s\n", req.URL.Path)),
+	)
+
 	id := mux.Vars(req)["uuid"]
 	ver := mux.Vars(req)["ver"]
 
-	r, err := ts.store.DeleteConfig(id, ver)
+	ctx := tracer.ContextWithSpan(context.Background(), span)
+	r, err := ts.store.DeleteConfig(ctx, id, ver)
 	if err != nil {
 		err := errors.New("key not found")
+		tracer.LogError(span, err)
 		http.Error(w, err.Error(), http.StatusNotFound)
 	}
 
-	model.RenderJSON(w, r)
+	model.RenderJSON(ctx, w, r)
 }
 
-func (ts *Service) addConfigToGroupHandler(w http.ResponseWriter, req *http.Request) string {
+func (ts *Service) addConfigToGroupHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) string {
+	span := tracer.StartSpanFromContext(ctx, "addConfigToGroupHandler")
+	defer span.Finish()
+
+	span.LogFields(
+		tracer.LogString("handler", fmt.Sprintf("handling add config to group at %s\n", req.URL.Path)),
+	)
+
 	id := mux.Vars(req)["uuid"]
 	ver := mux.Vars(req)["ver"]
 
@@ -194,25 +231,31 @@ func (ts *Service) addConfigToGroupHandler(w http.ResponseWriter, req *http.Requ
 		return ""
 	}
 
-	groupConfig, err := model.DecodeGroupConfig(req.Body)
+	//ctx := tracer.ContextWithSpan(context.Background(), span)
+
+	groupConfig, err := model.DecodeGroupConfig(ctx, req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return ""
 	}
 
-	_, err = ts.store.AddConfigToGroup(id, ver, groupConfig)
+	_, err = ts.store.AddConfigToGroup(ctx, id, ver, groupConfig)
 
 	if err != nil {
 		err := errors.New("key not found")
+		tracer.LogError(span, err)
 		http.Error(w, err.Error(), http.StatusNotFound)
 	}
 
-	model.RenderJSON(w, id)
+	model.RenderJSON(ctx, w, id)
 
 	return id
 }
 
-func (ts *Service) createGroupVersionHandler(w http.ResponseWriter, req *http.Request) string {
+func (ts *Service) createGroupVersionHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) string {
+	span := tracer.StartSpanFromContext(ctx, "createGroupVersionHandler")
+	defer span.Finish()
+
 	id := mux.Vars(req)["uuid"]
 
 	contentType := req.Header.Get("Content-Type")
@@ -240,20 +283,30 @@ func (ts *Service) createGroupVersionHandler(w http.ResponseWriter, req *http.Re
 		return ""
 	}
 
-	model.RenderJSON(w, id)
+	model.RenderJSONOld(w, id)
 
 	return id
 }
 
 func (ts *Service) delGroupHandler(w http.ResponseWriter, req *http.Request) {
+	span := tracer.StartSpanFromRequest("delGroupHandler", ts.tracer, req)
+	defer span.Finish()
+
+	span.LogFields(
+		tracer.LogString("handler", fmt.Sprintf("handling delete group at %s\n", req.URL.Path)),
+	)
+
 	id := mux.Vars(req)["uuid"]
 	ver := mux.Vars(req)["ver"]
 
-	r, err := ts.store.DeleteGroup(id, ver)
+	ctx := tracer.ContextWithSpan(context.Background(), span)
+
+	r, err := ts.store.DeleteGroup(ctx, id, ver)
 	if err != nil {
 		err := errors.New("key not found")
+		tracer.LogError(span, err)
 		http.Error(w, err.Error(), http.StatusNotFound)
 	}
 
-	model.RenderJSON(w, r)
+	model.RenderJSON(ctx, w, r)
 }
