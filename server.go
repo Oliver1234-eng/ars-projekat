@@ -173,35 +173,44 @@ func (ts *Service) createGroupHandler(ctx context.Context, w http.ResponseWriter
 func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
 	span := tracer.StartSpanFromRequest("getConfigHandler", ts.tracer, req)
 	defer span.Finish()
+
+	span.LogFields(tracer.LogString("handler", fmt.Sprintf("handling get config from %s\n", req.URL.Path)))
+
 	id := mux.Vars(req)["uuid"]
 	ver := mux.Vars(req)["ver"]
 
 	ctx := tracer.ContextWithSpan(context.Background(), span)
 
-	config, err := ts.store.GetConfig(id, ver)
+	config, err := ts.store.GetConfig(ctx, id, ver)
 	if err != nil {
 		err := errors.New("key not found")
+		tracer.LogError(span, err)
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	model.RenderJSONOld(ctx, w, config)
+	model.RenderJSON(ctx, w, config)
 }
 
 func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
 	span := tracer.StartSpanFromRequest("getGroupHandler", ts.tracer, req)
 	defer span.Finish()
+
+	span.LogFields(tracer.LogString("handler", fmt.Sprintf("handling get group from %s\n", req.URL.Path)))
+
 	id := mux.Vars(req)["uuid"]
 	ver := mux.Vars(req)["ver"]
 	labels := model.DecodeQueryLabels(req.URL.Query())
 	ctx := tracer.ContextWithSpan(context.Background(), span)
-	group, err := ts.store.GetGroup(id, ver, labels)
+
+	group, err := ts.store.GetGroup(ctx, id, ver, labels)
 	if err != nil {
+		tracer.LogError(span, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	model.RenderJSONOld(ctx, w, group)
+	model.RenderJSON(ctx, w, group)
 }
 
 func (ts *Service) delConfigHandler(w http.ResponseWriter, req *http.Request) {
@@ -240,6 +249,7 @@ func (ts *Service) addConfigToGroupHandler(ctx context.Context, w http.ResponseW
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
+		tracer.LogError(span, err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return ""
 	}
@@ -250,10 +260,9 @@ func (ts *Service) addConfigToGroupHandler(ctx context.Context, w http.ResponseW
 		return ""
 	}
 
-	//ctx := tracer.ContextWithSpan(context.Background(), span)
-
 	groupConfig, err := model.DecodeGroupConfig(ctx, req.Body)
 	if err != nil {
+		tracer.LogError(span, err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return ""
 	}
@@ -274,6 +283,10 @@ func (ts *Service) addConfigToGroupHandler(ctx context.Context, w http.ResponseW
 func (ts *Service) createGroupVersionHandler(ctx context.Context, w http.ResponseWriter, req *http.Request) string {
 	span := tracer.StartSpanFromContext(ctx, "createGroupVersionHandler")
 	defer span.Finish()
+
+	span.LogFields(
+		tracer.LogString("handler", fmt.Sprintf("handling create group version at %s\n", req.URL.Path)),
+	)
 
 	id := mux.Vars(req)["uuid"]
 
@@ -302,7 +315,7 @@ func (ts *Service) createGroupVersionHandler(ctx context.Context, w http.Respons
 		return ""
 	}
 
-	model.RenderJSONOld(ctx, w, id)
+	model.RenderJSON(ctx, w, id)
 
 	return id
 }
