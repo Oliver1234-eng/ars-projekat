@@ -171,6 +171,7 @@ func (ts *Service) getConfigHandler(w http.ResponseWriter, req *http.Request) {
 	config, err := ts.store.GetConfig(ctx, id, ver)
 	if err != nil {
 		err := errors.New("key not found")
+		tracer.LogError(span, err)
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -192,6 +193,7 @@ func (ts *Service) getGroupHandler(w http.ResponseWriter, req *http.Request) {
 
 	group, err := ts.store.GetGroup(ctx, id, ver, labels)
 	if err != nil {
+		tracer.LogError(span, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -235,6 +237,7 @@ func (ts *Service) addConfigToGroupHandler(ctx context.Context, w http.ResponseW
 	contentType := req.Header.Get("Content-Type")
 	mediatype, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
+		tracer.LogError(span, err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return ""
 	}
@@ -245,10 +248,9 @@ func (ts *Service) addConfigToGroupHandler(ctx context.Context, w http.ResponseW
 		return ""
 	}
 
-	//ctx := tracer.ContextWithSpan(context.Background(), span)
-
 	groupConfig, err := model.DecodeGroupConfig(ctx, req.Body)
 	if err != nil {
+		tracer.LogError(span, err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return ""
 	}
