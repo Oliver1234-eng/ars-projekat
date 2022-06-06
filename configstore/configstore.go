@@ -312,7 +312,7 @@ func (ps *ConfigStore) CreateGroupVersion(ctx context.Context, groupId string, g
 		return "", errors.New("Group not found")
 	}
 
-	groupVersionExists := ps.CheckIfGroupVersionExists(context.Background(), groupId, groupJSON.Version)
+	groupVersionExists := ps.CheckIfGroupVersionExists(ctx, groupId, groupJSON.Version)
 	if groupVersionExists {
 		return "", errors.New("Group version already exists")
 	}
