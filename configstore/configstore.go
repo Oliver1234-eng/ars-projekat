@@ -176,9 +176,9 @@ func (ps *ConfigStore) GetGroup(ctx context.Context, id string, version string, 
 
 	groupKey := constructGroupKey(id, version, labels)
 
-	getTreeSpan := tracer.StartSpanFromContext(ctx, "GetTree")
+	listSpan := tracer.StartSpanFromContext(ctx, "List")
 	data, _, err := kv.List(groupKey, nil)
-	getTreeSpan.Finish()
+	listSpan.Finish()
 
 	if err != nil {
 		tracer.LogError(span, err)
@@ -332,9 +332,11 @@ func (ps *ConfigStore) CreateGroupVersion(ctx context.Context, groupId string, g
 		}
 
 		p := &api.KVPair{Key: groupConfigKey, Value: data}
-		createGroupVersionSpan := tracer.StartSpanFromContext(ctx, "CreateGroupVersion")
+
+		putSpan := tracer.StartSpanFromContext(ctx, "Put")
 		_, err = kv.Put(p, nil)
-		createGroupVersionSpan.Finish()
+		putSpan.Finish()
+
 		if err != nil {
 			return "", err
 		}
