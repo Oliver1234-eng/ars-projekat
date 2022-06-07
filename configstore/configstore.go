@@ -51,11 +51,13 @@ func (ps *ConfigStore) IdempotencyKeyExists(ctx context.Context, key string) (bo
 	return true, string(uuid.Value), nil
 }
 
-func (ps *ConfigStore) CreateConfig(configJSON *model.ConfigJSON) (string, error) {
+func (ps *ConfigStore) CreateConfig(ctx context.Context, configJSON *model.ConfigJSON) (string, error) {
+	span := tracer.StartSpanFromContext(ctx, "CreateConfig")
+	defer span.Finish()
+
 	kv := ps.cli.KV()
 
 	sid, rid := generateConfigKey(configJSON.Version)
-
 	config := model.Config{
 		Key:   configJSON.Key,
 		Value: configJSON.Value,
@@ -67,7 +69,11 @@ func (ps *ConfigStore) CreateConfig(configJSON *model.ConfigJSON) (string, error
 	}
 
 	p := &api.KVPair{Key: sid, Value: data}
+
+	putSpan := tracer.StartSpanFromContext(ctx, "Put")
 	_, err = kv.Put(p, nil)
+	putSpan.Finish()
+
 	if err != nil {
 		return "", err
 	}
@@ -75,15 +81,17 @@ func (ps *ConfigStore) CreateConfig(configJSON *model.ConfigJSON) (string, error
 	return rid, nil
 }
 
-func (ps *ConfigStore) CreateConfigVersion(id string, configJSON *model.ConfigJSON) (string, error) {
+func (ps *ConfigStore) CreateConfigVersion(ctx context.Context, id string, configJSON *model.ConfigJSON) (string, error) {
+	span := tracer.StartSpanFromContext(ctx, "CreateConfigVersion")
+	defer span.Finish()
 	kv := ps.cli.KV()
 
-	confExists := ps.CheckIfConfigExists(id)
+	confExists := ps.CheckIfConfigExists(ctx, id)
 	if !confExists {
 		return "", errors.New("Config not found")
 	}
 
-	confVersionExists := ps.CheckIfConfigVersionExists(id, configJSON.Version)
+	confVersionExists := ps.CheckIfConfigVersionExists(ctx, id, configJSON.Version)
 	if confVersionExists {
 		return "", errors.New("Config version already exists")
 	}
@@ -101,7 +109,11 @@ func (ps *ConfigStore) CreateConfigVersion(id string, configJSON *model.ConfigJS
 	}
 
 	p := &api.KVPair{Key: configKey, Value: data}
+
+	putSpan := tracer.StartSpanFromContext(ctx, "Put")
 	_, err = kv.Put(p, nil)
+	putSpan.Finish()
+
 	if err != nil {
 		return "", err
 	}
@@ -109,13 +121,16 @@ func (ps *ConfigStore) CreateConfigVersion(id string, configJSON *model.ConfigJS
 	return configKey, nil
 }
 
-func (ps *ConfigStore) CreateGroup(groupJSON *model.GroupJSON) (string, error) {
+func (ps *ConfigStore) CreateGroup(ctx context.Context, groupJSON *model.GroupJSON) (string, error) {
+	span := tracer.StartSpanFromContext(ctx, "CreateGroup")
+	defer span.Finish()
+
 	kv := ps.cli.KV()
 
 	groupId := createId()
 
 	for _, c := range groupJSON.Configs {
-		labels := model.DecodeJSONLabels(c.Labels)
+		labels := model.DecodeJSONLabels(ctx, c.Labels)
 		groupConfigKey, _ := generateGroupConfigKey(groupId, groupJSON.Version, labels)
 
 		config := model.Config{
@@ -129,7 +144,11 @@ func (ps *ConfigStore) CreateGroup(groupJSON *model.GroupJSON) (string, error) {
 		}
 
 		p := &api.KVPair{Key: groupConfigKey, Value: data}
+
+		putSpan := tracer.StartSpanFromContext(ctx, "Put")
 		_, err = kv.Put(p, nil)
+		putSpan.Finish()
+
 		if err != nil {
 			return "", err
 		}
@@ -233,7 +252,7 @@ func (ps *ConfigStore) AddConfigToGroup(ctx context.Context, id string, version 
 		return "", errors.New("Group not found")
 	}
 
-	labels := model.DecodeJSONLabels(groupConfigJSON.Labels)
+	labels := model.DecodeJSONLabels(ctx, groupConfigJSON.Labels)
 	groupConfigKey := constructGroupKey(id, version, labels)
 
 	config := model.Config{
@@ -260,12 +279,18 @@ func (ps *ConfigStore) AddConfigToGroup(ctx context.Context, id string, version 
 
 }
 
-func (ps *ConfigStore) CheckIfConfigExists(id string) bool {
+func (ps *ConfigStore) CheckIfConfigExists(ctx context.Context, id string) bool {
+	span := tracer.StartSpanFromContext(ctx, "CheckIfConfigExists")
+	defer span.Finish()
+
 	kv := ps.cli.KV()
 
 	groupKey := fmt.Sprintf("configs/%s/", id)
 
+	listSpan := tracer.StartSpanFromContext(ctx, "List")
 	data, _, err := kv.List(groupKey, nil)
+	listSpan.Finish()
+
 	if err != nil {
 		return false
 	}
@@ -318,7 +343,7 @@ func (ps *ConfigStore) CreateGroupVersion(ctx context.Context, groupId string, g
 	}
 
 	for _, c := range groupJSON.Configs {
-		labels := model.DecodeJSONLabels(c.Labels)
+		labels := model.DecodeJSONLabels(ctx, c.Labels)
 		groupConfigKey, _ := generateGroupConfigKey(groupId, groupJSON.Version, labels)
 
 		config := model.Config{
@@ -382,17 +407,25 @@ func (ps *ConfigStore) DeleteGroup(ctx context.Context, id string, version strin
 	return map[string]string{"Deleted": id}, nil
 }
 
-func (ps *ConfigStore) CheckIfConfigVersionExists(id string, version string) bool {
+func (ps *ConfigStore) CheckIfConfigVersionExists(ctx context.Context, id string, version string) bool {
+	span := tracer.StartSpanFromContext(ctx, "CheckConfigVersion")
+	defer span.Finish()
+
 	kv := ps.cli.KV()
 
 	groupKey := fmt.Sprintf("configs/%s/%s/", id, version)
 
+	listSpan := tracer.StartSpanFromContext(ctx, "List")
 	data, _, err := kv.List(groupKey, nil)
+	listSpan.Finish()
+
 	if err != nil {
+		tracer.LogError(span, err)
 		return false
 	}
 
 	if data == nil {
+		tracer.LogError(span, err)
 		return false
 	}
 
