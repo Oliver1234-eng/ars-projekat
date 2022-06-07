@@ -44,8 +44,9 @@ func DecodeGroupConfig(ctx context.Context, r io.Reader) (*GroupConfigJSON, erro
 }
 
 func DecodeGroup(ctx context.Context, r io.Reader) (*GroupJSON, error) {
-	span := tracer.StartSpanFromContext(ctx, "DecodeGroupConfig")
+	span := tracer.StartSpanFromContext(ctx, "DecodeGroup")
 	defer span.Finish()
+
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
 
@@ -96,20 +97,6 @@ func DecodeJSONLabels(ctx context.Context, labels []LabelJSON) string {
 	}
 
 	return strings.Join(pairs[:], "&")
-}
-
-func RenderJSONOld(ctx context.Context, w http.ResponseWriter, v interface{}) {
-	span := tracer.StartSpanFromContext(ctx, "RenderJSON")
-	defer span.Finish()
-	js, err := json.Marshal(v)
-	if err != nil {
-		tracer.LogError(span, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/model")
-	w.Write(js)
 }
 
 func RenderJSON(ctx context.Context, w http.ResponseWriter, v interface{}) {

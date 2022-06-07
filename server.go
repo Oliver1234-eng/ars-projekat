@@ -85,7 +85,7 @@ func (ts *Service) createConfigHandler(ctx context.Context, w http.ResponseWrite
 		return ""
 	}
 
-	model.RenderJSONOld(ctx, w, id)
+	model.RenderJSON(ctx, w, id)
 
 	return id
 
@@ -127,7 +127,7 @@ func (ts *Service) createConfigVersionHandler(ctx context.Context, w http.Respon
 		return ""
 	}
 
-	model.RenderJSONOld(ctx, w, id)
+	model.RenderJSON(ctx, w, id)
 
 	return id
 }
@@ -165,7 +165,7 @@ func (ts *Service) createGroupHandler(ctx context.Context, w http.ResponseWriter
 		return ""
 	}
 
-	model.RenderJSONOld(ctx, w, id)
+	model.RenderJSON(ctx, w, id)
 
 	return id
 }

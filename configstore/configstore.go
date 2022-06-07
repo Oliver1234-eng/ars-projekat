@@ -54,15 +54,14 @@ func (ps *ConfigStore) IdempotencyKeyExists(ctx context.Context, key string) (bo
 func (ps *ConfigStore) CreateConfig(ctx context.Context, configJSON *model.ConfigJSON) (string, error) {
 	span := tracer.StartSpanFromContext(ctx, "CreateConfig")
 	defer span.Finish()
+
 	kv := ps.cli.KV()
 
 	sid, rid := generateConfigKey(configJSON.Version)
-	createConfigSpan := tracer.StartSpanFromContext(ctx, "CreateConfigSpan")
 	config := model.Config{
 		Key:   configJSON.Key,
 		Value: configJSON.Value,
 	}
-	createConfigSpan.Finish()
 
 	data, err := json.Marshal(config)
 	if err != nil {
@@ -70,7 +69,11 @@ func (ps *ConfigStore) CreateConfig(ctx context.Context, configJSON *model.Confi
 	}
 
 	p := &api.KVPair{Key: sid, Value: data}
+
+	putSpan := tracer.StartSpanFromContext(ctx, "Put")
 	_, err = kv.Put(p, nil)
+	putSpan.Finish()
+
 	if err != nil {
 		return "", err
 	}
@@ -79,12 +82,11 @@ func (ps *ConfigStore) CreateConfig(ctx context.Context, configJSON *model.Confi
 }
 
 func (ps *ConfigStore) CreateConfigVersion(ctx context.Context, id string, configJSON *model.ConfigJSON) (string, error) {
-	span := tracer.StartSpanFromContext(ctx, "CreateConfig")
+	span := tracer.StartSpanFromContext(ctx, "CreateConfigVersion")
 	defer span.Finish()
 	kv := ps.cli.KV()
 
-	confExists := ps.CheckIfConfigExists(id)
-	createConfigVersionSpan := tracer.StartSpanFromContext(ctx, "Create config version")
+	confExists := ps.CheckIfConfigExists(ctx, id)
 	if !confExists {
 		return "", errors.New("Config not found")
 	}
@@ -107,21 +109,26 @@ func (ps *ConfigStore) CreateConfigVersion(ctx context.Context, id string, confi
 	}
 
 	p := &api.KVPair{Key: configKey, Value: data}
+
+	putSpan := tracer.StartSpanFromContext(ctx, "Put")
 	_, err = kv.Put(p, nil)
+	putSpan.Finish()
+
 	if err != nil {
 		return "", err
 	}
-	createConfigVersionSpan.Finish()
+
 	return configKey, nil
 }
 
 func (ps *ConfigStore) CreateGroup(ctx context.Context, groupJSON *model.GroupJSON) (string, error) {
-	span := tracer.StartSpanFromContext(ctx, "CreateConfig")
+	span := tracer.StartSpanFromContext(ctx, "CreateGroup")
 	defer span.Finish()
+
 	kv := ps.cli.KV()
 
 	groupId := createId()
-	createGroupSpan := tracer.StartSpanFromContext(ctx, "CreateGroupSpan")
+
 	for _, c := range groupJSON.Configs {
 		labels := model.DecodeJSONLabels(ctx, c.Labels)
 		groupConfigKey, _ := generateGroupConfigKey(groupId, groupJSON.Version, labels)
@@ -130,7 +137,6 @@ func (ps *ConfigStore) CreateGroup(ctx context.Context, groupJSON *model.GroupJS
 			Key:   c.Key,
 			Value: c.Value,
 		}
-		createGroupSpan.Finish()
 
 		data, err := json.Marshal(config)
 		if err != nil {
@@ -138,7 +144,11 @@ func (ps *ConfigStore) CreateGroup(ctx context.Context, groupJSON *model.GroupJS
 		}
 
 		p := &api.KVPair{Key: groupConfigKey, Value: data}
+
+		putSpan := tracer.StartSpanFromContext(ctx, "Put")
 		_, err = kv.Put(p, nil)
+		putSpan.Finish()
+
 		if err != nil {
 			return "", err
 		}
@@ -269,12 +279,18 @@ func (ps *ConfigStore) AddConfigToGroup(ctx context.Context, id string, version 
 
 }
 
-func (ps *ConfigStore) CheckIfConfigExists(id string) bool {
+func (ps *ConfigStore) CheckIfConfigExists(ctx context.Context, id string) bool {
+	span := tracer.StartSpanFromContext(ctx, "CheckIfConfigExists")
+	defer span.Finish()
+
 	kv := ps.cli.KV()
 
 	groupKey := fmt.Sprintf("configs/%s/", id)
 
+	listSpan := tracer.StartSpanFromContext(ctx, "List")
 	data, _, err := kv.List(groupKey, nil)
+	listSpan.Finish()
+
 	if err != nil {
 		return false
 	}
@@ -394,13 +410,15 @@ func (ps *ConfigStore) DeleteGroup(ctx context.Context, id string, version strin
 func (ps *ConfigStore) CheckIfConfigVersionExists(ctx context.Context, id string, version string) bool {
 	span := tracer.StartSpanFromContext(ctx, "CheckConfigVersion")
 	defer span.Finish()
-	span.LogFields(
-		tracer.LogString("handler", fmt.Sprintf("checking if config and version exists id: %s  version: %s", id, version)))
+
 	kv := ps.cli.KV()
 
 	groupKey := fmt.Sprintf("configs/%s/%s/", id, version)
-	CheckConfigVersionSpan := tracer.StartSpanFromContext(ctx, "CheckConfigVersionSpan")
+
+	listSpan := tracer.StartSpanFromContext(ctx, "List")
 	data, _, err := kv.List(groupKey, nil)
+	listSpan.Finish()
+
 	if err != nil {
 		tracer.LogError(span, err)
 		return false
@@ -410,7 +428,7 @@ func (ps *ConfigStore) CheckIfConfigVersionExists(ctx context.Context, id string
 		tracer.LogError(span, err)
 		return false
 	}
-	CheckConfigVersionSpan.Finish()
+
 	return true
 }
 
