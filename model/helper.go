@@ -1,6 +1,8 @@
 package model
 
 import (
+	tracer "ars-projekat/tracer"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
@@ -10,34 +12,47 @@ import (
 	"strings"
 )
 
-func DecodeConfig(r io.Reader) (*ConfigJSON, error) {
+func DecodeConfig(ctx context.Context, r io.Reader) (*ConfigJSON, error) {
+	span := tracer.StartSpanFromContext(ctx, "DecodeConfig")
+	defer span.Finish()
+
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
 
 	var rt ConfigJSON
 	if err := dec.Decode(&rt); err != nil {
+		tracer.LogError(span, err)
 		return nil, err
 	}
+
 	return &rt, nil
 }
 
-func DecodeGroupConfig(r io.Reader) (*GroupConfigJSON, error) {
+func DecodeGroupConfig(ctx context.Context, r io.Reader) (*GroupConfigJSON, error) {
+	span := tracer.StartSpanFromContext(ctx, "DecodeGroupConfig")
+	defer span.Finish()
+
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
 
 	var rt GroupConfigJSON
 	if err := dec.Decode(&rt); err != nil {
+		tracer.LogError(span, err)
 		return nil, err
 	}
 	return &rt, nil
 }
 
-func DecodeGroup(r io.Reader) (*GroupJSON, error) {
+func DecodeGroup(ctx context.Context, r io.Reader) (*GroupJSON, error) {
+	span := tracer.StartSpanFromContext(ctx, "DecodeGroup")
+	defer span.Finish()
+
 	dec := json.NewDecoder(r)
 	dec.DisallowUnknownFields()
 
 	var rt GroupJSON
 	if err := dec.Decode(&rt); err != nil {
+		tracer.LogError(span, err)
 		return nil, err
 	}
 	return &rt, nil
@@ -61,7 +76,9 @@ func DecodeQueryLabels(labelsMap map[string][]string) string {
 	return strings.Join(pairs[:], "&")
 }
 
-func DecodeJSONLabels(labels []LabelJSON) string {
+func DecodeJSONLabels(ctx context.Context, labels []LabelJSON) string {
+	span := tracer.StartSpanFromContext(ctx, "DecodeGroupConfig")
+	defer span.Finish()
 	keys := make([]string, 0, len(labels))
 	pairs := make([]string, 0, len(labels))
 
@@ -82,9 +99,13 @@ func DecodeJSONLabels(labels []LabelJSON) string {
 	return strings.Join(pairs[:], "&")
 }
 
-func RenderJSON(w http.ResponseWriter, v interface{}) {
+func RenderJSON(ctx context.Context, w http.ResponseWriter, v interface{}) {
+	span := tracer.StartSpanFromContext(ctx, "RenderJSON")
+	defer span.Finish()
+
 	js, err := json.Marshal(v)
 	if err != nil {
+		tracer.LogError(span, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

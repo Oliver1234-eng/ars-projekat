@@ -19,7 +19,7 @@ services:
       - "14268:14268"
       - "14250:14250"
   app:
-    build: .
+    image: borisavz/ars-projekat
     restart: always
     ports:
       - "8000:8000"
