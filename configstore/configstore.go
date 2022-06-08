@@ -70,7 +70,9 @@ func (ps *ConfigStore) CreateConfig(ctx context.Context, configJSON *model.Confi
 
 	p := &api.KVPair{Key: sid, Value: data}
 
-	putSpan := tracer.StartSpanFromContext(ctx, "Put")
+	putCtx := tracer.ContextWithSpan(ctx, span)
+
+	putSpan := tracer.StartSpanFromContext(putCtx, "Put")
 	_, err = kv.Put(p, nil)
 	putSpan.Finish()
 
@@ -110,7 +112,9 @@ func (ps *ConfigStore) CreateConfigVersion(ctx context.Context, id string, confi
 
 	p := &api.KVPair{Key: configKey, Value: data}
 
-	putSpan := tracer.StartSpanFromContext(ctx, "Put")
+	putCtx := tracer.ContextWithSpan(ctx, span)
+
+	putSpan := tracer.StartSpanFromContext(putCtx, "Put")
 	_, err = kv.Put(p, nil)
 	putSpan.Finish()
 
@@ -145,7 +149,9 @@ func (ps *ConfigStore) CreateGroup(ctx context.Context, groupJSON *model.GroupJS
 
 		p := &api.KVPair{Key: groupConfigKey, Value: data}
 
-		putSpan := tracer.StartSpanFromContext(ctx, "Put")
+		putCtx := tracer.ContextWithSpan(ctx, span)
+
+		putSpan := tracer.StartSpanFromContext(putCtx, "Put")
 		_, err = kv.Put(p, nil)
 		putSpan.Finish()
 
@@ -165,7 +171,9 @@ func (ps *ConfigStore) GetConfig(ctx context.Context, id string, version string)
 
 	configKey := constructConfigKey(id, version)
 
-	getSpan := tracer.StartSpanFromContext(ctx, "Get")
+	getCtx := tracer.ContextWithSpan(ctx, span)
+
+	getSpan := tracer.StartSpanFromContext(getCtx, "Get")
 	pair, _, err := kv.Get(configKey, nil)
 	getSpan.Finish()
 
@@ -195,7 +203,9 @@ func (ps *ConfigStore) GetGroup(ctx context.Context, id string, version string, 
 
 	groupKey := constructGroupKey(id, version, labels)
 
-	listSpan := tracer.StartSpanFromContext(ctx, "List")
+	listCtx := tracer.ContextWithSpan(ctx, span)
+
+	listSpan := tracer.StartSpanFromContext(listCtx, "List")
 	data, _, err := kv.List(groupKey, nil)
 	listSpan.Finish()
 
@@ -229,7 +239,9 @@ func (ps *ConfigStore) DeleteConfig(ctx context.Context, id string, version stri
 
 	configKey := constructConfigKey(id, version)
 
-	deleteSpan := tracer.StartSpanFromContext(ctx, "Delete")
+	deleteCtx := tracer.ContextWithSpan(ctx, span)
+
+	deleteSpan := tracer.StartSpanFromContext(deleteCtx, "Delete")
 	_, err := kv.Delete(configKey, nil)
 	deleteSpan.Finish()
 
@@ -267,7 +279,9 @@ func (ps *ConfigStore) AddConfigToGroup(ctx context.Context, id string, version 
 
 	p := &api.KVPair{Key: groupConfigKey, Value: data}
 
-	putSpan := tracer.StartSpanFromContext(ctx, "Put")
+	putCtx := tracer.ContextWithSpan(ctx, span)
+
+	putSpan := tracer.StartSpanFromContext(putCtx, "Put")
 	_, err = kv.Put(p, nil)
 	putSpan.Finish()
 
@@ -287,7 +301,9 @@ func (ps *ConfigStore) CheckIfConfigExists(ctx context.Context, id string) bool 
 
 	groupKey := fmt.Sprintf("configs/%s/", id)
 
-	listSpan := tracer.StartSpanFromContext(ctx, "List")
+	listCtx := tracer.ContextWithSpan(ctx, span)
+
+	listSpan := tracer.StartSpanFromContext(listCtx, "List")
 	data, _, err := kv.List(groupKey, nil)
 	listSpan.Finish()
 
@@ -310,7 +326,9 @@ func (ps *ConfigStore) CheckIfGroupVersionExists(ctx context.Context, id string,
 
 	groupKey := fmt.Sprintf("groups/%s/%s/", id, version)
 
-	listSpan := tracer.StartSpanFromContext(ctx, "List")
+	listCtx := tracer.ContextWithSpan(ctx, span)
+
+	listSpan := tracer.StartSpanFromContext(listCtx, "List")
 	data, _, err := kv.List(groupKey, nil)
 	listSpan.Finish()
 
@@ -358,7 +376,9 @@ func (ps *ConfigStore) CreateGroupVersion(ctx context.Context, groupId string, g
 
 		p := &api.KVPair{Key: groupConfigKey, Value: data}
 
-		putSpan := tracer.StartSpanFromContext(ctx, "Put")
+		putCtx := tracer.ContextWithSpan(ctx, span)
+
+		putSpan := tracer.StartSpanFromContext(putCtx, "Put")
 		_, err = kv.Put(p, nil)
 		putSpan.Finish()
 
@@ -395,7 +415,9 @@ func (ps *ConfigStore) DeleteGroup(ctx context.Context, id string, version strin
 
 	groupKey := constructGroupKey(id, version, "")
 
-	deleteTreeSpan := tracer.StartSpanFromContext(ctx, "DeleteTree")
+	deleteCtx := tracer.ContextWithSpan(ctx, span)
+
+	deleteTreeSpan := tracer.StartSpanFromContext(deleteCtx, "DeleteTree")
 	_, err := kv.DeleteTree(groupKey, nil)
 	deleteTreeSpan.Finish()
 
@@ -415,7 +437,9 @@ func (ps *ConfigStore) CheckIfConfigVersionExists(ctx context.Context, id string
 
 	groupKey := fmt.Sprintf("configs/%s/%s/", id, version)
 
-	listSpan := tracer.StartSpanFromContext(ctx, "List")
+	listCtx := tracer.ContextWithSpan(ctx, span)
+
+	listSpan := tracer.StartSpanFromContext(listCtx, "List")
 	data, _, err := kv.List(groupKey, nil)
 	listSpan.Finish()
 
