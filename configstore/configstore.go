@@ -57,7 +57,7 @@ func (ps *ConfigStore) CreateConfig(ctx context.Context, configJSON *model.Confi
 
 	kv := ps.cli.KV()
 
-	sid, rid := generateConfigKey(configJSON.Version)
+	sid, rid := generateConfigKey(ctx, configJSON.Version)
 	config := model.Config{
 		Key:   configJSON.Key,
 		Value: configJSON.Value,
@@ -98,7 +98,7 @@ func (ps *ConfigStore) CreateConfigVersion(ctx context.Context, id string, confi
 		return "", errors.New("Config version already exists")
 	}
 
-	configKey := constructConfigKey(id, configJSON.Version)
+	configKey := constructConfigKey(ctx, id, configJSON.Version)
 
 	config := model.Config{
 		Key:   configJSON.Key,
@@ -135,7 +135,7 @@ func (ps *ConfigStore) CreateGroup(ctx context.Context, groupJSON *model.GroupJS
 
 	for _, c := range groupJSON.Configs {
 		labels := model.DecodeJSONLabels(ctx, c.Labels)
-		groupConfigKey, _ := generateGroupConfigKey(groupId, groupJSON.Version, labels)
+		groupConfigKey, _ := generateGroupConfigKey(ctx, groupId, groupJSON.Version, labels)
 
 		config := model.Config{
 			Key:   c.Key,
@@ -169,7 +169,7 @@ func (ps *ConfigStore) GetConfig(ctx context.Context, id string, version string)
 
 	kv := ps.cli.KV()
 
-	configKey := constructConfigKey(id, version)
+	configKey := constructConfigKey(ctx, id, version)
 
 	getCtx := tracer.ContextWithSpan(ctx, span)
 
@@ -201,7 +201,7 @@ func (ps *ConfigStore) GetGroup(ctx context.Context, id string, version string, 
 
 	kv := ps.cli.KV()
 
-	groupKey := constructGroupKey(id, version, labels)
+	groupKey := constructGroupKey(ctx, id, version, labels)
 
 	listCtx := tracer.ContextWithSpan(ctx, span)
 
@@ -237,7 +237,7 @@ func (ps *ConfigStore) DeleteConfig(ctx context.Context, id string, version stri
 
 	kv := ps.cli.KV()
 
-	configKey := constructConfigKey(id, version)
+	configKey := constructConfigKey(ctx, id, version)
 
 	deleteCtx := tracer.ContextWithSpan(ctx, span)
 
@@ -265,7 +265,7 @@ func (ps *ConfigStore) AddConfigToGroup(ctx context.Context, id string, version 
 	}
 
 	labels := model.DecodeJSONLabels(ctx, groupConfigJSON.Labels)
-	groupConfigKey := constructGroupKey(id, version, labels)
+	groupConfigKey := constructGroupKey(ctx, id, version, labels)
 
 	config := model.Config{
 		Key:   groupConfigJSON.Key,
@@ -362,7 +362,7 @@ func (ps *ConfigStore) CreateGroupVersion(ctx context.Context, groupId string, g
 
 	for _, c := range groupJSON.Configs {
 		labels := model.DecodeJSONLabels(ctx, c.Labels)
-		groupConfigKey, _ := generateGroupConfigKey(groupId, groupJSON.Version, labels)
+		groupConfigKey, _ := generateGroupConfigKey(ctx, groupId, groupJSON.Version, labels)
 
 		config := model.Config{
 			Key:   c.Key,
@@ -413,7 +413,7 @@ func (ps *ConfigStore) DeleteGroup(ctx context.Context, id string, version strin
 
 	kv := ps.cli.KV()
 
-	groupKey := constructGroupKey(id, version, "")
+	groupKey := constructGroupKey(ctx, id, version, "")
 
 	deleteCtx := tracer.ContextWithSpan(ctx, span)
 
@@ -462,7 +462,7 @@ func (ps *ConfigStore) SaveIdempotencyKey(ctx context.Context, key string, itemI
 
 	kv := ps.cli.KV()
 
-	idempotencyKey := constructIdempotencyKey(key)
+	idempotencyKey := constructIdempotencyKey(ctx, key)
 
 	p := &api.KVPair{Key: idempotencyKey, Value: []byte(itemId)}
 	kv.Put(p, nil)
